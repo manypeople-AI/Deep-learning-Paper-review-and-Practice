@@ -6,13 +6,17 @@
 ## Image Generator
 - RESNET
 - VAE
+
 Variational Auto-Encoder
 - GAN
+
 Generative Adversarial Network
 - cGAN
+
 Conditioanl GAN
 - pix2pix
 - LSGAN
+
 Least Square GAN
 - CycleGAN
 
