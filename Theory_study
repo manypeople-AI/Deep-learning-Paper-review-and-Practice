@@ -1,0 +1,285 @@
+>보아즈 논문 스터디가 시작되었다. 
+매주 논문을 읽고 정리해 블로그에 이해한 선 안에서 최대한 자세히 정리해서 올리려고 한다 :)
+먼저 나는 Image generator 조에 속하게 되었고, 첫주차에 읽은 논문은 바로 ResNet 논문이다.
+
+ 
+# *Introduction*
+
+'Deep Residual for Image Recognition' 논문은 2016년 CVPR에서 발표된 논문으로, 뛰어난 이미지 인식 성능과 쉽고 간단한 기본 아이디어로 인해 지금까지도 매우 좋은 논문으로 평가되어 왔다.
+
+ 
+
+ 
+
+# *background*
+![CNN](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FbfwV8B%2FbtqZ9CZFpDv%2FziSRkj6pSGhFIakTptyDK0%2Fimg.png " ")
+
+먼저 이러한 ResNet에 대해 살펴보기 전 이러한 모델이 제안되어진 배경에 대해 살펴보자. 
+
+
+위의 그림은 기존의 CNN모델을 간단하게 그려놓은 것이다. 여기서 살펴볼 수 있듯이 기존의 CNN모델은 위와 같이 레이어가 깊어질수록 filter의 개수가 많아지고, 너비와 높이는 줄어든다.
+
+따라서 오른쪽과 같이 서로 다른 특징 정보를 추출하는 activation map은 네트워크가 깊어지면 깊어질수록 low/mid/high level의 풍부한 feature들을 데이터로부터 추출하고, 이에 따라 더 높은 성능을 띈다는 것이 일반적인 양상이었다.
+(=특징들의 level은 layer의 depth에 의해 강화됨)
+
+ 
+
+이에 대한 예시로, ImageNet에서 주요한 결과를 낸 모델들은 모두 깊은 layer의 모델을 활용했다는 것을 들 수 있다. (ex. VGG network, GoogLeNet 논문)
+
+ 
+
+ 
+
+그렇다면 실제 더 많은 layer를 쌓는 것으로 더 좋은 네트워크를 학습할 수 있는 것일까?
+
+ 
+
+ 
+
+이런 의문에 대해 오래전부터 단순히 layer만 깊게 쌓는 것은 다른 문제들을 야기할 수 있다고 알려져 왔다. 예를 들어, Vanishing/ Exploding gradient과 같은 문제들이 야기될 수 있다.
+
+대표적으로 Vanishing gradient란, sigmoid와 같은 활성화 함수를 사용하면 layer가 깊을 때 역전파 과정에서 기울기가 0에 가까워져서 학습이 잘 안되는 문제이다.
+
+ 
+
+이러한 문제들을 해결하기 위한 다양한 테크닉들이 제안되었는데 그 중 하나가 네트워크의 가중치 값들을 초기에 적절히 초기화 해놓아서 학습이 잘 이루어질수 있도록 만들어보자는 아이디어로 이 논문의 저자인 Kaiming  He가 2015 ICCV에서 발표한 논문인 'Derving deep into rectifiers'에서 제안하였던 He initialization 테크닉 등이 있다.
+
+ 
+
+ 
+
+👉 *또한 본 논문은 기본적으로 layer가 깊어짐에 따라 Degradation 문제가 발생할 수 있다고 언급하고 있다.* Degradation문제란, layer가 깊으면 정확도가 무조건 높아지는게 아니라 어느정도 이상 깊으면 오히려 정확도가 감소하는 문제로, 이러한 문제는 단순히 overfitting 때문에 발생하는 것이 아니다.
+(단순히 layer를 깊게 쌓는 것은 오히려 training error를 높이는 문제를 발생시킬 수 있다, 만약 overfitting 문제였다면 training error는 낮아졌을 것이다.)
+
+ 
+
+아래의 그래프를 살펴보자. 
+
+
+이와같이 기본적인 cnn에서 layer의 수만 늘리는 것은 이처럼 training, test error를 둘다 증가시키는 것을 확인할 수 있다.
+다시말해 학습자체가 잘 안된다는 것이다.
+그럼 이러한 문제가 의미하는 것은 무엇일까?
+*layer를 깊게 쌓는다고 모든 네트워크가 다 학습이 잘되는 것은 아니라는 것이다.*
+
+ 
+
+그렇다면 layer를 깊게 쌓기 위해서 단순히 그냥 identity mapping만 증가시키면 되는거 아닐까?
+당연히 layer를 깊게 쌓되 그 layer에서 많은 부분이 identity mapping으로 이루어질 수 있도록 만든다면 사실 이런 경우에는 더깊은 모델이 더 얕은 모델에다가 identity mapping만 추가한 것에 비해서 더 높은 training error를 가지는 것이 말이 안된다고 논문에서는 언급하고 있다.
+
+# *Deep Residual Learning*
+위에서 언급했던 다양한 문제들, 특히 Degradation문제를 해결하게 위해서 논문에서는 deep residual learning framework를 제안하고 있다.
+
+ 
+
+👉 *기본 개념*
+
+ 
+
+ResNet의 기본 아이디어는 잔여블록을 이용해 네트워크의 optimization 난이도를 낮추는 것이다. (layer가 깊어질수록 모델의 학습난이도가 높아지며 우리가 의도했던대로 최적화를 시키는 것이 쉽지 X 때문에) 우리가 의도했던 mapping H를 directly 학습하기 보다는 별도로 명시적으로 더 학습하기 쉬운 residual mapping인 F(x)를 따로 정의해 이 친구를 대신 학습시키고자 한다.
+
+ 
+
+
+ 
+
+그림으로 살펴보자. 여기서 H(x)는 실제로 우리가 학습하고자 하는 내재한 mapping이다.하지만 이러한 H(x)를 곧바로 학습하는 것은 매우 어렵다. 따라서 이것을 곧바로 학습하는 것이 아니라 조금더 학습하기 쉬운 mapping을 F(x)로 정의해서 F를 학습시키는 것이 난이도가 더 쉽다고 논문에서는 이야기하고 있다.
+
+ 
+
+Plain layers
+
+ 
+
+-일반적으로 하나의 x라는 input이 들어왔을 때, 여기서 weight layer는 일반적으로 convolution layer와 같은 것을 의미하는데 이처럼 convolution 연산 같은 것을 통해서 하나의 특징들을 추출
+
+ 
+
+-relu와 같은 activation function을 통해서 전체 네트워크가 nonlinear한 동작을 수행할 수 있게 만들어줌 -> 다시 연속적으로 convolution layer를 거치는 형태로 네트워크를 구성
+
+ 
+
+-실제 어떤 data x를 넣었을 때, 이상적으로 동작하는 mapping을 H(x)로 가정. 이 이상적인 함수 H(x)를 학습하는 것은 어렵다
+
+ 
+
+Residual Block
+
+ 
+
+-따라서 H를 학습하는 대신에 조금더 학습이 잘되는 형태인 F를 이용하자 는 것이 핵심아이디어.
+
+-input값을 weight들을 여러 번 거친 결괏값에 더해주는 것만 추가해주었더니
+
+결과적으로 네트워크가 훨씬더 빠르고 정확하게 잘 되었다는 것이다.
+
+-여기서 방금 말한 이 weight값을 여러 번 거친 결괏값을 F라고 한다. 즉 F(x)에 x를 더한 형태가 우리가 의도했던 형태인 H(x)와 같아지는 형태가 되도록 유도함. 이렇게 되면 앞선 layer에서 학습된 정보(이전 단계에서 뽑았던 특성들)인 단순한 특성 x는 변형없이 그대로 가져올 수 있게되고 거기에 뒷부분에서 뽑은 복잡한 특성, 즉 추가적으로 남아있는 잔여한 정보인 F를 더해주겠다는 것이다. 즉, F만 추가적으로 학습을 해주면 되기 때문에 F+x전체를 학습하는 것보다 쉽다.
+
+-하지만, 왼쪽 그림을 보면 H 같은 경우는 각각의 weight layer가 별도로 분리되어서 각각의 weight layer에 대해서 가중치 값들을 개별적으로 모두 학습을 진행할 필요가 있다. 즉 수렴 난이도가 높아지고 이것은 layer가 깊어질수록 심하게 발생한다.
+
+ 
+
+👉*수식으로 살펴보기*
+
+
+ 
+
+이렇게 y와 같은 형태로 residual block을 정의할 수 있다.
+
+(Wi = multiple convolution layer를 의미, weight 값을 여러번 사용 가능)
+
+ 
+
+이때 입력값의 dimension과 output값의 dimension이 동일하다고 하면 identity mapping을 수행하면 된다.
+
+하지만 둘의 dimension이 서로 다르다고 하면, 즉 x에 비해 output dimension이 더 크면 x dimension에 있는 하나의 x를 output dimension에 그냥 projection 시켜서 그 값을 더해주는 방법으로 mapping이 가능하다.
+
+( x에 Ws를 곱해줌으로써 dimension 값을 매치)
+
+ 
+
+ 
+
+ 
+
+👉 *Deep residual learning 추가적으로 살펴보기*
+
+ 
+
+원래 우리가 의도했던 optimal한 mapping을 H라고 보았을 때 사실 neural network가 하는 역할은 여러 개의 nonlinear한 layer들을 이용해서 점진적으로 복잡한 함수를 학습하는 것. 사실 우리는 이론적으로 residual function을 이용하면 H-x를 학습한다고 볼 수 있다. 그렇기 때문에 사실 H를 그대로 학습하는 것과 별다른 차이가 없을 것처럼 느껴질수 있다. 그러나 여기서 F를 학습하는 방법을 이용하면 그 난이도가 훨씬 쉬워진다는 것이다.
+앞에서 이야기 했듯이 추가적으로 더해지는 layer가 identity mapping이라면 더 깊은 모델은 최소한 더 얕은 모델에 비해서 training error가 높아지지는 않을 것이라는 추측.
+같은 맥락으로, 여러 개의 nonlinear layer를 겹쳐놓은 상황에서 identity mapping을 학습하는 것 자체가 쉽지않은 테스크. 즉 identitiy mapping을 기본으로 깔고갈 수 있게 하는 것이다. 즉 기본적으로 항상 이전 입력값을 그대로 출력값에 더해주도록 해서 기본적인 identity mapping을 항상 수행할 수 있도록 해줌으로써 학습난이도를 줄여줄 수있다.
+실제케이스에서 optimal한 솔루션이 identity mapping일 확률은 희박하다. 그럼에도 불구하고 그러한 mapping을 추가해주는 것 자체가 문제를 더 쉽게 해결할 수 있는 방향성을 제시
+확신할 수 있는 것은 만약 optimal한 솔루션이 zero mapping보다 identity mapping에 가깝다고 한다면 이렇게 residual function을 이용하는 것이 당연히 학습하기가 훨씬 쉽다
+즉 , 함수자체는 매번 새로운, 매 layer의 weight 값마다 새로운 mapping을 학습을 진행해야해서 학습이 더 어렵다. 이런 단점을 개선하기 위해서 residual function을 정의해 사용할 수 있다.
+# *Experiments*
+ 
+
+
+34-layer Plain network
+
+ 
+
+기본 네트워크는 VGG 네트워크에서 제안된 기법들을 적절히 이용
+
+ 
+
+-3x3 작은 filter, output feature map size에 같도록 하기 위해서 같은 개수의 filter를 사용, feature map의 사이즈가 절반으로 줄어들때는 filter의 개수를 2배로 늘려서 즉 다음 layer에서 channel값을 2배로 늘려서 이런 방법으로 layer마다 time-complexity를 보존할 수 있는 형태로 네트워크를 구성. 별도의 pooling layer를 사용x 그냥 convolution layer에서 stride 값을 2로 설정해 downsampling을 진행, layer의 마지막 부분에서 average pooling을 이용해 1000개의 클래스로 분류할 수 있게 만듦
+
+-본 모델은 일반적인 VGG 네트워크와 비교했을 때 더 적은 파라미터 사용, 복잡도가 낮음
+
+ 
+
+ResNet
+
+ 
+
+convolution filter를 두개씩 묶어서 매번 residual function형태로 학습을 진행함.
+
+점선으로 표시된 것은 입력단과 출력단에 dimension이 일치하지 않아 dimension을 맞춰줄 수 있는
+
+테크닉이 가미된 shortcut connection이라고 볼 수 있다.
+
+(convolution layer를 두개씩 묶는 것을 총 3번 반복, 그리고 크기 바꾸고 4번반복, 크기바꾸고 6번 반복, 또 크기바꾸고 3번 반복하게 구성) 확인해보면 VGG와 비교했을 때 FLOPs는 감소(계산 복잡도를 나타내는 척도)
+
+ 
+
+ 
+
+👉 *ImageNet*
+
+
+ 
+
+
+위 그래프를 확인해보면 기존 plain network에서 더 깊은 layer를 쌓는 것은 오히려 더 얕은 네트워크보다 에러율이 높아진 것을 확인할 수 있다.
+하지만 resnet같은 경우는 layer가 깊어질수록 더 성능이 정확도가 높아지는 것을 확인할수 있다.
+그래프를 확인해보면 수렴 속도 또한 더욱 빨랐음. 결과적으로 초기단계에서 더욱 빠르게 수렴할 수 있도록 만들어줌으로써 이러한 optimization자체를 더 쉽게 만들어줌.
+또한 여기서 재미있는 점은 이러한 문제가 vanishing gradient때문에 발생한 것은 아니다라고 언급. Forward/ backward path를 확인했을 때 어떠한 signal값들이 점진적으로 사라지는 현상은 발견되지 않는다. -> 대신 exponentially low convergence rates 때문이라고 함. 수렴율이 기하급수적으로 낮아지는 것이 문제라고 판단함. Convergence rate는 수렴을 위해 필요한 에폭이나 수렴난이도를 언급하고자 할 때 사용하는 척도.
+ 
+
+ 
+
+👉*Identity mapping vs projection*
+
+ 
+
+
+ 
+
+추가적으로 논문에서는 ResNet에서 shortcut connection을 위해서
+
+identitiy mapping을 사용할지 projection을 사용할지 실험을 통해 성능을 평가하고있다.
+
+ 
+
+A : Zero-padding을 사용해서 dimension을 늘려주고, identity mapping사용
+
+B : dimension이 증가할 떄만 projection 연산을 수행
+
+C : 모든 연산에 대해서 projection 수행
+
+ 
+
+ 
+
+표를 확인해보면, c번이 가장 성능자체는 높게 나오지만, 본 논문에서는 projection shortcut이 필수라고 할 정도로 높은 개선은 아니라고 하고 있다. 기본적으로 identity shortcut을 이용해서 성능을 많이 개선시킬 수 있다는 것을 보여줌.
+
+특히 bottleneck architecture에 대해서는 복잡도를 증가시키지 않기 위해서 더욱 효과적으로 사용될 수 있다고 말하고 있다.
+
+ 
+
+
+왼쪽 그림은 not bottleneck, 오른쪽은 bottleneck을 나타냄
+Bottleneck을 그림을 통해 확인해보면 초반에 1x1짜리 filter를 64개 사용, 중간에는 일반 residual block과 마찬가지로 3x3짜리 filter사용, 마지막에 다시 1x1짜리 filter를 256개 사용.
+
+ 
+
+단순히 파라미터 측면에서 보면 작은 커널을 사용함으로써 파라미터 수가 줄어든다고 이용할 수 있다. 이런 상황에서 identity shortcut은 파라미터 자체가 존재하지 않기 때문에 이러한 보틀넥 구조에 대해서 더욱 효과적으로 파라미터 수를 줄이는데 기여 가능. (보틀넥일 때는 identity shortcut이 더욱 효과적)
+
+ 
+
+ 
+
+👉 *CIFAR-10*
+
+ 
+
+CIFAR-10 데이터는 일단 입력 이미지 크기가 32x32로 imagenet보다 훨씬 작다.
+
+따라서 이에 맞춰 더욱더 파라미터 수를 줄여서 별도의 resnet을 고안해 사용
+
+(First layer로 convolution layer를 사용, 이어서 각각의 feature map 사이즈를 가지는 layer를 stack해서 사용, 마지막에 fully-connected layer를 사용해서 총 6n+2만큼의 layer가 사용됨.)
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+표를 통해 확인해보면, 기존에 존재했던 다른 네트워크들이랑 비교해보면 파라미터의 수는 더 적지만 성능은 더 좋은 것을 확인할 수 있다.
+Weight decay=0.0001, momentum = 0.9 , dropout x대신 batch 정규화, 가중치 초기화 기법 사용, 학습진행함에 따라 learning rate를 줄이는 방법 또한 사용
+Layer가 깊어질수록 더욱 성능이 좋아진 것을 확인 가능
+ 
+
+ 
+
+
+ 
+
+ 
+
+각 layer의 response에 대해서도 평가를 함
+기본적으로 resnet같은 경우는 상대적으로 작은 response값을 보인다. 값이 0에 가까운 형태로 optimization이 이루어 졌다고 판단. 또한 layer가 너무 불필요한 수준으로 깊어지면 오히려 성능이 떨어질 수 있다. 그래서 작은 데이터에 대해서 불필요하게 너무 깊은 layer를 쌓게 되면 overfitting문제가 발생해 성능이 떨어질 수 있다.
+👉 *Object detection & Segmentation task*
+
+ 
+
+
+
+최종적으로 object detection과 segmentation task에서도
+
+이와 같이 resnet 기반 네트워크가 더욱 좋은 성능을 보인 것을 확인할 수 있다.
