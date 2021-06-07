@@ -1,6 +1,6 @@
-# Deep-learning-Paper-review-and-Practice
+# Deep-learning-Paper-review
 
-> 최대한 다양한 분야의 딥러닝 논문들을 리뷰하고 코드로 작성해보는 Repository입니다. 
+> 최대한 다양한 분야의 딥러닝 논문들을 리뷰하는 Repository입니다. 
 
 # COMPUTER VISION
 ## Image Generator
